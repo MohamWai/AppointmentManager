@@ -1,0 +1,41 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Doctor Vacancy Checker</h2>
+    <form method="post" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="doctor" class="form-label">Select Doctor</label>
+            <select class="form-select" id="doctor" name="doctor" required>
+                {% for doc in doctors %}
+                <option value="{{ doc }}" {% if selected_doctor == doc %}selected{% endif %}>{{ doc }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="date" class="form-label">Select Date</label>
+            <input type="date" class="form-control" id="date" name="date" value="{{ selected_date }}" required>
+        </div>
+        <div class="col-md-3">
+            <label for="slot_duration" class="form-label">Slot Duration (minutes)</label>
+            <input type="number" class="form-control" id="slot_duration" name="slot_duration" min="15" max="120" value="{{ slot_duration }}" required>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Check Vacancies</button>
+        </div>
+    </form>
+    {% if slots is not none %}
+        {% if slots %}
+            <div class="alert alert-success">Available Slots for <strong>{{ selected_doctor }}</strong> on <strong>{{ selected_date }}</strong>:</div>
+            <div class="row">
+                {% for slot in slots %}
+                <div class="col-md-2 mb-2">
+                    <div class="btn btn-outline-success w-100">{{ slot }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        {% elif selected_doctor and selected_date %}
+            <div class="alert alert-warning">No available slots found for that day.</div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %} 
