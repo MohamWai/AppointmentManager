@@ -1,0 +1,871 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar Navigation -->
+        <div class="col-md-3">
+            <div class="list-group mb-4" id="sidebar-sections">
+                <a href="#" class="list-group-item list-group-item-action active" onclick="showSection('demographics')">
+                    <i class="fas fa-user"></i> Demographics & Chief Complaint
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('history')">
+                    <i class="fas fa-history"></i> History of Present Illness
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('examination')">
+                    <i class="fas fa-stethoscope"></i> Physical Examination
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('assessment')">
+                    <i class="fas fa-clipboard-check"></i> Assessment & Diagnosis
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('treatment')">
+                    <i class="fas fa-hand-holding-medical"></i> Treatment Plan
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('outcomes')">
+                    <i class="fas fa-chart-line"></i> Outcome Measures
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('education')">
+                    <i class="fas fa-graduation-cap"></i> Patient Education
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('followup')">
+                    <i class="fas fa-calendar-check"></i> Follow-up Plan
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="showSection('attachments')">
+                    <i class="fas fa-paperclip"></i> Attachments & Consent
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <!-- Appointment Header -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-user-md"></i> 
+                            Appointment with {{ appt.patient.name }}
+                            {% if existing_note %}
+                            <span class="badge bg-warning text-dark ms-2">Editing Existing Note</span>
+                            {% endif %}
+                        </h4>
+                        <div>
+                            <span class="badge bg-light text-dark">{{ appt.date.strftime('%B %d, %Y') }}</span>
+                            <span class="badge bg-light text-dark">{{ appt.time.strftime('%H:%M') }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Patient:</strong> {{ appt.patient.name }} 
+                            {% if appt.patient.date_of_birth %}
+                                ({{ ((today - appt.patient.date_of_birth).days / 365.25) | int }} years)
+                            {% endif %}<br>
+                            <strong>Type:</strong> {{ appt.appointment_type or 'Not specified' }}<br>
+                            <strong>Reason:</strong> {{ appt.reason or 'Not specified' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Doctor:</strong> {{ appt.doctor.name }}<br>
+                            <strong>Status:</strong> 
+                            <span class="badge 
+                                {% if appt.status == 'Completed' %}bg-success
+                                {% elif appt.status == 'Confirmed' %}bg-primary
+                                {% elif appt.status == 'Pending' %}bg-warning text-dark
+                                {% elif appt.status == 'Cancelled' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ appt.status }}
+                            </span><br>
+                            {% if session_number and total_sessions %}
+                            <strong>Session:</strong> {{ session_number }} of {{ total_sessions }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" id="comprehensive-note-form">
+                {% if existing_note %}
+                <script>
+                    // Pre-populate form with existing data
+                    document.addEventListener('DOMContentLoaded', function() {
+                        try {
+                            const noteData = {{ existing_note.data | tojson | safe }};
+                            // Helper function to safely set field values
+                            function setFieldValue(fieldId, value) {
+                                const field = document.getElementById(fieldId);
+                                if (field && value) {
+                                    field.value = value;
+                                }
+                            }
+                            
+                            // Helper function to safely check checkboxes
+                            function checkBoxes(selector, values) {
+                                if (values && Array.isArray(values)) {
+                                    values.forEach(function(value) {
+                                        const checkbox = document.querySelector(selector + '[value="' + value + '"]');
+                                        if (checkbox) {
+                                            checkbox.checked = true;
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            // Text fields
+                            setFieldValue('chief_complaint', noteData.chief_complaint);
+                            setFieldValue('pain_location', noteData.pain_location);
+                            setFieldValue('functional_impact', noteData.functional_impact);
+                            setFieldValue('aggravating_factors', noteData.aggravating_factors);
+                            setFieldValue('relieving_factors', noteData.relieving_factors);
+                            setFieldValue('onset', noteData.onset);
+                            setFieldValue('duration', noteData.duration);
+                            setFieldValue('mechanism_of_injury', noteData.mechanism_of_injury);
+                            setFieldValue('previous_treatment', noteData.previous_treatment);
+                            setFieldValue('response_to_treatment', noteData.response_to_treatment);
+                            setFieldValue('rom_active', noteData.rom_active);
+                            setFieldValue('rom_passive', noteData.rom_passive);
+                            setFieldValue('strength_testing', noteData.strength_testing);
+                            setFieldValue('special_tests', noteData.special_tests);
+                            setFieldValue('palpation', noteData.palpation);
+                            setFieldValue('functional_tests', noteData.functional_tests);
+                            setFieldValue('posture_assessment', noteData.posture_assessment);
+                            setFieldValue('swelling_edema', noteData.swelling_edema);
+                            setFieldValue('clinical_impression', noteData.clinical_impression);
+                            setFieldValue('differential_diagnosis', noteData.differential_diagnosis);
+                            setFieldValue('prognosis', noteData.prognosis);
+                            setFieldValue('treatment_goals', noteData.treatment_goals);
+                            setFieldValue('barriers_to_recovery', noteData.barriers_to_recovery);
+                            setFieldValue('risk_factors', noteData.risk_factors);
+                            setFieldValue('therapeutic_exercises', noteData.therapeutic_exercises);
+                            setFieldValue('patient_education', noteData.patient_education);
+                            setFieldValue('treatment_response', noteData.treatment_response);
+                            setFieldValue('functional_scale', noteData.functional_scale);
+                            setFieldValue('functional_score', noteData.functional_score);
+                            setFieldValue('rom_measurements', noteData.rom_measurements);
+                            setFieldValue('strength_measurements', noteData.strength_measurements);
+                            setFieldValue('other_measurements', noteData.other_measurements);
+                            setFieldValue('home_exercise_program', noteData.home_exercise_program);
+                            setFieldValue('activity_modifications', noteData.activity_modifications);
+                            setFieldValue('self_management', noteData.self_management);
+                            setFieldValue('precautions', noteData.precautions);
+                            setFieldValue('next_appointment_date', noteData.next_appointment_date);
+                            setFieldValue('treatment_frequency', noteData.treatment_frequency);
+                            setFieldValue('estimated_duration', noteData.estimated_duration);
+                            setFieldValue('referrals', noteData.referrals);
+                            setFieldValue('imaging_required', noteData.imaging_required);
+                            setFieldValue('discharge_criteria', noteData.discharge_criteria);
+                            setFieldValue('vital_signs', noteData.vital_signs);
+                            setFieldValue('additional_notes', noteData.additional_notes);
+                            
+                            // Pain scales
+                            if (noteData.pain_scale) {
+                                const painScale = document.getElementById('pain_scale');
+                                const painValue = document.getElementById('pain_value');
+                                if (painScale && painValue) {
+                                    painScale.value = noteData.pain_scale;
+                                    painValue.textContent = noteData.pain_scale;
+                                }
+                            }
+                            
+                            if (noteData.pain_scale_post) {
+                                const painScalePost = document.getElementById('pain_scale_post');
+                                const painValuePost = document.getElementById('pain_value_post');
+                                if (painScalePost && painValuePost) {
+                                    painScalePost.value = noteData.pain_scale_post;
+                                    painValuePost.textContent = noteData.pain_scale_post;
+                                }
+                            }
+                            
+                            // Checkboxes
+                            checkBoxes('input[name="red_flags"]', noteData.red_flags);
+                            checkBoxes('input[name="treatment_methods"]', noteData.treatment_methods);
+                            checkBoxes('input[name="equipment_used"]', noteData.equipment_used);
+                            checkBoxes('input[name="education_topics"]', noteData.education_topics);
+                            
+                            // Boolean fields
+                            if (noteData.consent_given) {
+                                const consentField = document.getElementById('consent_given');
+                                if (consentField) consentField.checked = true;
+                            }
+                            if (noteData.safety_checked) {
+                                const safetyField = document.getElementById('safety_checked');
+                                if (safetyField) safetyField.checked = true;
+                            }
+                            if (noteData.contraindications_checked) {
+                                const contraindicationsField = document.getElementById('contraindications_checked');
+                                if (contraindicationsField) contraindicationsField.checked = true;
+                            }
+                            
+                        } catch (error) {
+                            console.error('Error pre-populating form:', error);
+                        }
+                    });
+                </script>
+                {% endif %}
+                <!-- Demographics & Chief Complaint -->
+                <div id="section-demographics" class="appointment-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-user"></i> Demographics & Chief Complaint</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="chief_complaint" class="form-label">Chief Complaint *</label>
+                                        <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3" 
+                                            placeholder="Primary reason for visit, main symptoms, duration..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="pain_scale" class="form-label">Pain Intensity (0-10)</label>
+                                        <div class="d-flex align-items-center">
+                                            <input type="range" class="form-range flex-grow-1 me-3" id="pain_scale" name="pain_scale" 
+                                                min="0" max="10" value="0">
+                                            <span id="pain_value" class="badge bg-primary">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="pain_location" class="form-label">Pain Location</label>
+                                        <input type="text" class="form-control" id="pain_location" name="pain_location" 
+                                            placeholder="e.g., Right shoulder, Lower back, Left knee...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="functional_impact" class="form-label">Functional Impact</label>
+                                        <textarea class="form-control" id="functional_impact" name="functional_impact" rows="3" 
+                                            placeholder="How does this affect daily activities, work, sports..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="aggravating_factors" class="form-label">Aggravating Factors</label>
+                                        <textarea class="form-control" id="aggravating_factors" name="aggravating_factors" rows="2" 
+                                            placeholder="What makes it worse?"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="relieving_factors" class="form-label">Relieving Factors</label>
+                                        <textarea class="form-control" id="relieving_factors" name="relieving_factors" rows="2" 
+                                            placeholder="What makes it better?"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History of Present Illness -->
+                <div id="section-history" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-history"></i> History of Present Illness</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="onset" class="form-label">Onset</label>
+                                        <select class="form-select" id="onset" name="onset">
+                                            <option value="">Select onset type</option>
+                                            <option value="Gradual">Gradual</option>
+                                            <option value="Sudden">Sudden</option>
+                                            <option value="Traumatic">Traumatic</option>
+                                            <option value="Post-surgical">Post-surgical</option>
+                                            <option value="Unknown">Unknown</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="duration" class="form-label">Duration</label>
+                                        <input type="text" class="form-control" id="duration" name="duration" 
+                                            placeholder="e.g., 2 weeks, 3 months, 1 year...">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="mechanism_of_injury" class="form-label">Mechanism of Injury</label>
+                                        <textarea class="form-control" id="mechanism_of_injury" name="mechanism_of_injury" rows="2" 
+                                            placeholder="How did the injury occur?"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="previous_treatment" class="form-label">Previous Treatment</label>
+                                        <textarea class="form-control" id="previous_treatment" name="previous_treatment" rows="3" 
+                                            placeholder="Previous physiotherapy, medications, surgeries..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="response_to_treatment" class="form-label">Response to Previous Treatment</label>
+                                        <textarea class="form-control" id="response_to_treatment" name="response_to_treatment" rows="2" 
+                                            placeholder="How did the patient respond to previous treatments?"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Red Flags</label><br>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Night pain" id="redflag1">
+                                                    <label class="form-check-label" for="redflag1">Night pain</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Unexplained weight loss" id="redflag2">
+                                                    <label class="form-check-label" for="redflag2">Unexplained weight loss</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Fever" id="redflag3">
+                                                    <label class="form-check-label" for="redflag3">Fever</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Neurological symptoms" id="redflag4">
+                                                    <label class="form-check-label" for="redflag4">Neurological symptoms</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Bowel/bladder changes" id="redflag5">
+                                                    <label class="form-check-label" for="redflag5">Bowel/bladder changes</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="red_flags" value="Trauma" id="redflag6">
+                                                    <label class="form-check-label" for="redflag6">Trauma</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Physical Examination -->
+                <div id="section-examination" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-stethoscope"></i> Physical Examination</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Range of Motion (ROM)</h6>
+                                    <div class="mb-3">
+                                        <label for="rom_active" class="form-label">Active ROM</label>
+                                        <textarea class="form-control" id="rom_active" name="rom_active" rows="2" 
+                                            placeholder="Active range of motion findings..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="rom_passive" class="form-label">Passive ROM</label>
+                                        <textarea class="form-control" id="rom_passive" name="rom_passive" rows="2" 
+                                            placeholder="Passive range of motion findings..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="strength_testing" class="form-label">Strength Testing</label>
+                                        <textarea class="form-control" id="strength_testing" name="strength_testing" rows="2" 
+                                            placeholder="Manual muscle testing, grip strength..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Special Tests & Palpation</h6>
+                                    <div class="mb-3">
+                                        <label for="special_tests" class="form-label">Special Tests</label>
+                                        <textarea class="form-control" id="special_tests" name="special_tests" rows="2" 
+                                            placeholder="Orthopedic tests, neurological tests..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="palpation" class="form-label">Palpation Findings</label>
+                                        <textarea class="form-control" id="palpation" name="palpation" rows="2" 
+                                            placeholder="Tenderness, swelling, temperature changes..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functional_tests" class="form-label">Functional Tests</label>
+                                        <textarea class="form-control" id="functional_tests" name="functional_tests" rows="2" 
+                                            placeholder="Gait analysis, balance tests, functional movements..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Additional Findings</h6>
+                                    <div class="mb-3">
+                                        <label for="posture_assessment" class="form-label">Posture Assessment</label>
+                                        <textarea class="form-control" id="posture_assessment" name="posture_assessment" rows="2" 
+                                            placeholder="Postural deviations, alignment issues..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="swelling_edema" class="form-label">Swelling/Edema</label>
+                                        <textarea class="form-control" id="swelling_edema" name="swelling_edema" rows="2" 
+                                            placeholder="Location, severity, characteristics..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assessment & Diagnosis -->
+                <div id="section-assessment" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-clipboard-check"></i> Assessment & Diagnosis</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="clinical_impression" class="form-label">Clinical Impression *</label>
+                                        <textarea class="form-control" id="clinical_impression" name="clinical_impression" rows="3" 
+                                            placeholder="Working diagnosis, clinical reasoning..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="differential_diagnosis" class="form-label">Differential Diagnosis</label>
+                                        <textarea class="form-control" id="differential_diagnosis" name="differential_diagnosis" rows="2" 
+                                            placeholder="Other possible diagnoses to consider..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="prognosis" class="form-label">Prognosis</label>
+                                        <select class="form-select" id="prognosis" name="prognosis">
+                                            <option value="">Select prognosis</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                            <option value="Guarded">Guarded</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="treatment_goals" class="form-label">Treatment Goals</label>
+                                        <textarea class="form-control" id="treatment_goals" name="treatment_goals" rows="3" 
+                                            placeholder="Short-term and long-term goals..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="barriers_to_recovery" class="form-label">Barriers to Recovery</label>
+                                        <textarea class="form-control" id="barriers_to_recovery" name="barriers_to_recovery" rows="2" 
+                                            placeholder="Factors that may impede progress..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="risk_factors" class="form-label">Risk Factors</label>
+                                        <textarea class="form-control" id="risk_factors" name="risk_factors" rows="2" 
+                                            placeholder="Factors that may affect treatment outcome..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Treatment Plan -->
+                <div id="section-treatment" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-hand-holding-medical"></i> Treatment Plan</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Advanced Treatment Methods</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Treatment Interventions</label><br>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Electrical therapy" id="tm1">
+                                                    <label class="form-check-label" for="tm1">Electrical therapy</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Manual therapy" id="tm2">
+                                                    <label class="form-check-label" for="tm2">Manual therapy</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Heat therapy" id="tm3">
+                                                    <label class="form-check-label" for="tm3">Heat therapy</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Therapeutic exercises" id="tm4">
+                                                    <label class="form-check-label" for="tm4">Therapeutic exercises</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Dry needling" id="tm5">
+                                                    <label class="form-check-label" for="tm5">Dry needling</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="treatment_methods" value="Cupping" id="tm6">
+                                                    <label class="form-check-label" for="tm6">Cupping</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">State-of-the-Art Equipment</label><br>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Ultrasound" id="eq1">
+                                                    <label class="form-check-label" for="eq1">Ultrasound</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Laser therapy" id="eq2">
+                                                    <label class="form-check-label" for="eq2">Laser therapy</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Shockwave therapy" id="eq3">
+                                                    <label class="form-check-label" for="eq3">Shockwave therapy</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Wax therapy" id="eq4">
+                                                    <label class="form-check-label" for="eq4">Wax therapy</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Infrared therapy" id="eq5">
+                                                    <label class="form-check-label" for="eq5">Infrared therapy</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="equipment_used" value="Gym facilities" id="eq6">
+                                                    <label class="form-check-label" for="eq6">Gym facilities</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Exercise & Education</h6>
+                                    <div class="mb-3">
+                                        <label for="therapeutic_exercises" class="form-label">Therapeutic Exercises</label>
+                                        <textarea class="form-control" id="therapeutic_exercises" name="therapeutic_exercises" rows="3" 
+                                            placeholder="Exercises performed during session..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="patient_education" class="form-label">Patient Education</label>
+                                        <textarea class="form-control" id="patient_education" name="patient_education" rows="2" 
+                                            placeholder="Education provided to patient..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="treatment_response" class="form-label">Patient Response to Treatment</label>
+                                        <textarea class="form-control" id="treatment_response" name="treatment_response" rows="2" 
+                                            placeholder="How did the patient respond to today's treatment?"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outcome Measures -->
+                <div id="section-outcomes" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-line"></i> Outcome Measures</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Pain & Function Scales</h6>
+                                    <div class="mb-3">
+                                        <label for="pain_scale_post" class="form-label">Pain Scale Post-Treatment (0-10)</label>
+                                        <div class="d-flex align-items-center">
+                                            <input type="range" class="form-range flex-grow-1 me-3" id="pain_scale_post" name="pain_scale_post" 
+                                                min="0" max="10" value="0">
+                                            <span id="pain_post_value" class="badge bg-success">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functional_scale" class="form-label">Functional Scale</label>
+                                        <select class="form-select" id="functional_scale" name="functional_scale">
+                                            <option value="">Select scale</option>
+                                            <option value="DASH">DASH (Disabilities of Arm, Shoulder, Hand)</option>
+                                            <option value="ODI">ODI (Oswestry Disability Index)</option>
+                                            <option value="LEFS">LEFS (Lower Extremity Functional Scale)</option>
+                                            <option value="NPRS">NPRS (Numeric Pain Rating Scale)</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functional_score" class="form-label">Functional Score</label>
+                                        <input type="text" class="form-control" id="functional_score" name="functional_score" 
+                                            placeholder="Score value">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Objective Measurements</h6>
+                                    <div class="mb-3">
+                                        <label for="rom_measurements" class="form-label">ROM Measurements</label>
+                                        <textarea class="form-control" id="rom_measurements" name="rom_measurements" rows="2" 
+                                            placeholder="Specific ROM measurements in degrees..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="strength_measurements" class="form-label">Strength Measurements</label>
+                                        <textarea class="form-control" id="strength_measurements" name="strength_measurements" rows="2" 
+                                            placeholder="Manual muscle testing grades, dynamometer readings..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="other_measurements" class="form-label">Other Measurements</label>
+                                        <textarea class="form-control" id="other_measurements" name="other_measurements" rows="2" 
+                                            placeholder="Girth measurements, balance tests, gait analysis..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Education -->
+                <div id="section-education" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-graduation-cap"></i> Patient Education</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="home_exercise_program" class="form-label">Home Exercise Program</label>
+                                        <textarea class="form-control" id="home_exercise_program" name="home_exercise_program" rows="4" 
+                                            placeholder="Detailed home exercise instructions, frequency, duration..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="activity_modifications" class="form-label">Activity Modifications</label>
+                                        <textarea class="form-control" id="activity_modifications" name="activity_modifications" rows="3" 
+                                            placeholder="Activities to avoid, modifications for daily activities..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="self_management" class="form-label">Self-Management Strategies</label>
+                                        <textarea class="form-control" id="self_management" name="self_management" rows="3" 
+                                            placeholder="Pain management techniques, self-mobilization..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="precautions" class="form-label">Precautions & Warnings</label>
+                                        <textarea class="form-control" id="precautions" name="precautions" rows="3" 
+                                            placeholder="Safety precautions, warning signs to watch for..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Education Topics Covered</label><br>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="education_topics" value="Anatomy" id="ed1">
+                                            <label class="form-check-label" for="ed1">Anatomy</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="education_topics" value="Biomechanics" id="ed2">
+                                            <label class="form-check-label" for="ed2">Biomechanics</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="education_topics" value="Ergonomics" id="ed3">
+                                            <label class="form-check-label" for="ed3">Ergonomics</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="education_topics" value="Lifestyle" id="ed4">
+                                            <label class="form-check-label" for="ed4">Lifestyle</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Follow-up Plan -->
+                <div id="section-followup" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-calendar-check"></i> Follow-up Plan</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="next_appointment_date" class="form-label">Next Appointment Date</label>
+                                        <input type="date" class="form-control" id="next_appointment_date" name="next_appointment_date">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="treatment_frequency" class="form-label">Recommended Treatment Frequency</label>
+                                        <select class="form-select" id="treatment_frequency" name="treatment_frequency">
+                                            <option value="">Select frequency</option>
+                                            <option value="Daily">Daily</option>
+                                            <option value="2-3x/week">2-3x/week</option>
+                                            <option value="Weekly">Weekly</option>
+                                            <option value="Bi-weekly">Bi-weekly</option>
+                                            <option value="Monthly">Monthly</option>
+                                            <option value="As needed">As needed</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="estimated_duration" class="form-label">Estimated Treatment Duration</label>
+                                        <input type="text" class="form-control" id="estimated_duration" name="estimated_duration" 
+                                            placeholder="e.g., 6 weeks, 3 months...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="referrals" class="form-label">Referrals</label>
+                                        <textarea class="form-control" id="referrals" name="referrals" rows="2" 
+                                            placeholder="Referrals to other healthcare providers..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="imaging_required" class="form-label">Imaging Required</label>
+                                        <textarea class="form-control" id="imaging_required" name="imaging_required" rows="2" 
+                                            placeholder="X-rays, MRI, CT scan recommendations..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="discharge_criteria" class="form-label">Discharge Criteria</label>
+                                        <textarea class="form-control" id="discharge_criteria" name="discharge_criteria" rows="2" 
+                                            placeholder="Goals that need to be met for discharge..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attachments & Consent -->
+                <div id="section-attachments" class="appointment-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-paperclip"></i> Attachments & Consent</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="progress_file" class="form-label">Upload Progress Photo/Document</label>
+                                        <input class="form-control" type="file" id="progress_file" name="progress_file" 
+                                            accept="image/*,.pdf,.doc,.docx">
+                                        <small class="text-muted">Upload photos, documents, or other relevant files</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="vital_signs" class="form-label">Vital Signs</label>
+                                        <textarea class="form-control" id="vital_signs" name="vital_signs" rows="2" 
+                                            placeholder="Blood pressure, heart rate, temperature..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Consent & Safety</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="consent_given" name="consent_given">
+                                            <label class="form-check-label" for="consent_given">
+                                                Patient has given informed consent for treatment
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="safety_checked" name="safety_checked">
+                                            <label class="form-check-label" for="safety_checked">
+                                                Safety precautions reviewed with patient
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="contraindications_checked" name="contraindications_checked">
+                                            <label class="form-check-label" for="contraindications_checked">
+                                                Contraindications reviewed and addressed
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="additional_notes" class="form-label">Additional Notes</label>
+                                        <textarea class="form-control" id="additional_notes" name="additional_notes" rows="3" 
+                                            placeholder="Any additional observations, concerns, or notes..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save"></i> Save Comprehensive Note
+                                </button>
+                            </div>
+                            <div>
+                                <button type="submit" name="end_appointment" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check-circle"></i> End Appointment
+                                </button>
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-lg ms-2">
+                                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Previous Notes Section -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Previous Session Notes</h5>
+                </div>
+                <div class="card-body">
+                    {% if previous_notes %}
+                    <div class="accordion" id="previousNotesAccordion">
+                        {% for note in previous_notes %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ note.id }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse{{ note.id }}" aria-expanded="false" aria-controls="collapse{{ note.id }}">
+                                    <strong>{{ note.note_type }}</strong> - {{ note.created_at.strftime('%B %d, %Y at %H:%M') }}
+                                </button>
+                            </h2>
+                            <div id="collapse{{ note.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ note.id }}" 
+                                data-bs-parent="#previousNotesAccordion">
+                                <div class="accordion-body">
+                                    {% if note.data %}
+                                        {% if note.data.chief_complaint %}<strong>Chief Complaint:</strong> {{ note.data.chief_complaint }}<br>{% endif %}
+                                        {% if note.data.clinical_impression %}<strong>Clinical Impression:</strong> {{ note.data.clinical_impression }}<br>{% endif %}
+                                        {% if note.data.treatment_goals %}<strong>Treatment Goals:</strong> {{ note.data.treatment_goals }}<br>{% endif %}
+                                        {% if note.data.home_exercise_program %}<strong>Home Exercise:</strong> {{ note.data.home_exercise_program }}<br>{% endif %}
+                                        {% if note.data.next_appointment_date %}<strong>Next Appointment:</strong> {{ note.data.next_appointment_date }}<br>{% endif %}
+                                    {% else %}
+                                        <div class="text-muted">Note content not available in new format.</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No previous notes for this patient.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Section navigation
+function showSection(section) {
+    // Hide all sections
+    document.querySelectorAll('.appointment-section').forEach(function(el) {
+        el.style.display = 'none';
+    });
+    
+    // Show selected section
+    document.getElementById('section-' + section).style.display = 'block';
+    
+    // Update active state in sidebar
+    document.querySelectorAll('#sidebar-sections a').forEach(function(link) {
+        link.classList.remove('active');
+    });
+    document.querySelector('#sidebar-sections a[onclick*="' + section + '"]').classList.add('active');
+}
+
+// Pain scale value display
+document.getElementById('pain_scale').addEventListener('input', function() {
+    document.getElementById('pain_value').textContent = this.value;
+});
+
+document.getElementById('pain_scale_post').addEventListener('input', function() {
+    document.getElementById('pain_post_value').textContent = this.value;
+});
+
+// Initialize first section
+window.onload = function() { 
+    showSection('demographics'); 
+};
+
+
+</script>
+{% endblock %} 
