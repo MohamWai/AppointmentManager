@@ -1,0 +1,196 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Add New Appointment</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="is_package" name="is_package" onchange="togglePackageFields()">
+            <label class="form-check-label" for="is_package">This is a package patient</label>
+        </div>
+        <div class="mb-3">
+            <label for="patient_id" class="form-label">Patient</label>
+            <select class="form-select" id="patient_id" name="patient_id" required onchange="toggleNewPatientFields()">
+                <option value="">Select Patient</option>
+                {% for patient in patients %}
+                <option value="{{ patient.id }}">{{ patient.name }} ({{ patient.phone }})</option>
+                {% endfor %}
+                <option value="new">+ Add New Patient</option>
+            </select>
+        </div>
+        <div id="new_patient_fields" style="display:none;">
+            <div class="mb-3">
+                <label for="new_patient_name" class="form-label">New Patient Name</label>
+                <input type="text" class="form-control" id="new_patient_name" name="new_patient_name">
+            </div>
+            <div class="mb-3">
+                <label for="new_patient_phone" class="form-label">New Patient Phone</label>
+                <input type="text" class="form-control" id="new_patient_phone" name="new_patient_phone">
+            </div>
+            <div class="mb-3">
+                <label for="new_patient_gender" class="form-label">New Patient Gender</label>
+                <select class="form-select" id="new_patient_gender" name="new_patient_gender">
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="doctor_id" class="form-label">Doctor</label>
+            <select class="form-select" id="doctor_id" name="doctor_id" required>
+                {% for doctor in doctors %}
+                <option value="{{ doctor.id }}">{{ doctor.name }} ({{ doctor.specialty }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="reason" class="form-label">Reason</label>
+            <textarea class="form-control" id="reason" name="reason"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="appointment_type" class="form-label">Appointment Type</label>
+            <select class="form-select" id="appointment_type" name="appointment_type" required>
+                <option value="Consultation">Consultation</option>
+                <option value="Procedure">Procedure</option>
+                <option value="Follow-up">Follow-up</option>
+                <option value="Package Session">Package Session</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status" required>
+                {% for status in all_statuses %}
+                <option value="{{ status }}">{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="duration" class="form-label">Duration (minutes)</label>
+            <input type="number" class="form-control" id="duration" name="duration" min="5" max="180" value="60" required>
+        </div>
+        <!-- Single appointment fields -->
+        <div id="single_fields">
+            <div class="mb-3">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date">
+            </div>
+            <div class="mb-3">
+                <label for="time" class="form-label">Time</label>
+                <div class="input-group">
+                    <input type="time" class="form-control" id="time" name="time">
+                    <button type="button" class="btn btn-outline-info" onclick="checkDoctorSlots()">Check Doctor Availability</button>
+                </div>
+                <div id="slot_picker" class="mt-2"></div>
+                <small class="form-text text-muted">Click a slot to fill the time field above.</small>
+            </div>
+        </div>
+        <!-- Package appointment fields -->
+        <div id="package_fields" style="display:none;">
+            <div class="mb-3">
+                <label for="package_start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="package_start_date" name="package_start_date">
+            </div>
+            <div class="mb-3">
+                <label for="package_time" class="form-label">Time of Appointments</label>
+                <input type="time" class="form-control" id="package_time" name="package_time">
+            </div>
+            <div class="mb-3">
+                <label for="num_appointments" class="form-label">Number of Appointments</label>
+                <input type="number" class="form-control" id="num_appointments" name="num_appointments" min="1" value="12">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Select days for appointments (Friday excluded)</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Saturday" id="sat">
+                    <label class="form-check-label" for="sat">Saturday</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Sunday" id="sun">
+                    <label class="form-check-label" for="sun">Sunday</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Monday" id="mon">
+                    <label class="form-check-label" for="mon">Monday</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Tuesday" id="tue">
+                    <label class="form-check-label" for="tue">Tuesday</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Wednesday" id="wed">
+                    <label class="form-check-label" for="wed">Wednesday</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selected_weekdays" value="Thursday" id="thu">
+                    <label class="form-check-label" for="thu">Thursday</label>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Appointment</button>
+        <a href="/" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+<script>
+function togglePackageFields() {
+    var isPackage = document.getElementById('is_package').checked;
+    document.getElementById('single_fields').style.display = isPackage ? 'none' : 'block';
+    document.getElementById('package_fields').style.display = isPackage ? 'block' : 'none';
+}
+function toggleNewPatientFields() {
+    var patientSelect = document.getElementById('patient_id');
+    var newFields = document.getElementById('new_patient_fields');
+    if (patientSelect.value === 'new') {
+        newFields.style.display = 'block';
+        document.getElementById('new_patient_name').required = true;
+        document.getElementById('new_patient_phone').required = true;
+    } else {
+        newFields.style.display = 'none';
+        document.getElementById('new_patient_name').required = false;
+        document.getElementById('new_patient_phone').required = false;
+    }
+}
+document.getElementById('patient_id').addEventListener('change', toggleNewPatientFields);
+window.onload = toggleNewPatientFields;
+
+function checkDoctorSlots() {
+    var doctorId = document.getElementById('doctor_id').value;
+    var date = document.getElementById('date').value;
+    var duration = document.getElementById('duration').value;
+    if (!doctorId || !date || !duration) {
+        alert('Please select doctor, date, and duration first.');
+        return;
+    }
+    fetch(`/api/doctor_slots?doctor_id=${doctorId}&date=${date}&duration=${duration}`)
+        .then(response => response.json())
+        .then(data => {
+            var slotDiv = document.getElementById('slot_picker');
+            slotDiv.innerHTML = '';
+            if (data.slots.length === 0) {
+                slotDiv.innerHTML = '<div class="alert alert-warning">No available slots for this doctor on this day.</div>';
+            } else {
+                data.slots.forEach(function(slot) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-outline-success btn-sm me-2 mb-2';
+                    btn.innerText = slot;
+                    btn.onclick = function() {
+                        document.getElementById('time').value = slot;
+                    };
+                    slotDiv.appendChild(btn);
+                });
+            }
+        });
+}
+document.getElementById('doctor_id').addEventListener('change', function() { document.getElementById('slot_picker').innerHTML = ''; });
+document.getElementById('date').addEventListener('change', function() { document.getElementById('slot_picker').innerHTML = ''; });
+document.getElementById('duration').addEventListener('change', function() { document.getElementById('slot_picker').innerHTML = ''; });
+</script>
+{% endblock %} 

@@ -1,0 +1,150 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Patient Profile: {{ patient.name }}</h2>
+        <div>
+            <a href="{{ url_for('edit_patient', patient_id=patient.id) }}" class="btn btn-primary">Edit Profile</a>
+            <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-info">View History</a>
+            <a href="{{ url_for('list_patients') }}" class="btn btn-secondary">Back to Patients</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Basic Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Name:</strong></div>
+                        <div class="col-sm-8">{{ patient.name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Phone:</strong></div>
+                        <div class="col-sm-8">{{ patient.phone }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Gender:</strong></div>
+                        <div class="col-sm-8">{{ patient.gender or 'Not specified' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Date of Birth:</strong></div>
+                        <div class="col-sm-8">
+                            {% if patient.date_of_birth %}
+                                {{ patient.date_of_birth.strftime('%B %d, %Y') }}
+                                {% set age = ((today - patient.date_of_birth).days / 365.25) | int %}
+                                <span class="text-muted">({{ age }} years old)</span>
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if patient.contact_info %}
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Contact Info:</strong></div>
+                        <div class="col-sm-8">{{ patient.contact_info }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Medical Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-heartbeat"></i> Medical Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if patient.medical_history %}
+                    <div class="mb-3">
+                        <strong>Medical History:</strong>
+                        <div class="mt-2 p-3 bg-light rounded">{{ patient.medical_history | nl2br }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if patient.family_history %}
+                    <div class="mb-3">
+                        <strong>Family History:</strong>
+                        <div class="mt-2 p-3 bg-light rounded">{{ patient.family_history | nl2br }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if patient.social_history %}
+                    <div class="mb-3">
+                        <strong>Social History:</strong>
+                        <div class="mt-2 p-3 bg-light rounded">{{ patient.social_history | nl2br }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if not patient.medical_history and not patient.family_history and not patient.social_history %}
+                    <div class="text-muted">No medical information recorded yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Appointments -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-calendar"></i> Recent Appointments</h5>
+        </div>
+        <div class="card-body">
+            {% set recent_appointments = patient.appointments | sort(attribute='date', reverse=true) | list %}
+            {% if recent_appointments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Doctor</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appt in recent_appointments[:5] %}
+                            <tr>
+                                <td>{{ appt.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ appt.time.strftime('%H:%M') }}</td>
+                                <td>{{ appt.doctor.name }}</td>
+                                <td>{{ appt.appointment_type or 'Not specified' }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if appt.status == 'Cancelled' %}bg-danger
+                                        {% elif appt.status == 'Pending' %}bg-warning text-dark
+                                        {% elif appt.status == 'Confirmed' %}bg-primary
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ appt.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('view_appointment', appt_id=appt.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                    {% if session.get('role') == 'doctor' and appt.doctor_id == session.get('doctor_id') %}
+                                    <a href="{{ url_for('doctor_appointment', appt_id=appt.id) }}" class="btn btn-sm btn-outline-success">Manage</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if recent_appointments | length > 5 %}
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-outline-primary">View All Appointments</a>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">No appointments found for this patient.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

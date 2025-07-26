@@ -1,0 +1,56 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Edit Patient</h2>
+    <form method="post">
+        <div class="row">
+            <div class="col-md-6">
+                <h4 class="mb-3">Basic Information</h4>
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ patient.name }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Phone *</label>
+                    <input type="text" class="form-control" id="phone" name="phone" value="{{ patient.phone }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="gender" class="form-label">Gender</label>
+                    <select class="form-select" id="gender" name="gender">
+                        <option value="">Select</option>
+                        <option value="Male" {% if patient.gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if patient.gender == 'Female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="{{ patient.date_of_birth.strftime('%Y-%m-%d') if patient.date_of_birth else '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="contact_info" class="form-label">Additional Contact Info</label>
+                    <textarea class="form-control" id="contact_info" name="contact_info" rows="2" placeholder="Email, address, emergency contact, etc.">{{ patient.contact_info or '' }}</textarea>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h4 class="mb-3">Medical History</h4>
+                <div class="mb-3">
+                    <label for="medical_history" class="form-label">Medical History</label>
+                    <textarea class="form-control" id="medical_history" name="medical_history" rows="4" placeholder="Previous injuries, surgeries, chronic conditions, medications, allergies...">{{ patient.medical_history or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="family_history" class="form-label">Family History</label>
+                    <textarea class="form-control" id="family_history" name="family_history" rows="3" placeholder="Family medical history, genetic conditions...">{{ patient.family_history or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="social_history" class="form-label">Social History</label>
+                    <textarea class="form-control" id="social_history" name="social_history" rows="3" placeholder="Occupation, lifestyle, smoking, alcohol, exercise habits...">{{ patient.social_history or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('list_patients') }}" class="btn btn-secondary ms-2">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 
